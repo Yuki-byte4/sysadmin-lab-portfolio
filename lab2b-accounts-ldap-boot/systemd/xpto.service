@@ -1,1 +1,12 @@
+[Unit]
+Description=XPTO Service
+After=network.target
 
+[Service]
+Type=simple
+ExecStart=/usr/bin/xpto
+Restart=on-failure
+User=nobody
+
+[Install]
+WantedBy=multi-user.target
