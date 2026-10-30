@@ -1,114 +1,172 @@
-# Lab 1: Virtualization and Docker
+# Virtualization and Docker Lab
 
+## Risks of Running Multiple Virtual Machines
 
-## Concepts
+Running multiple virtual machines (VMs) introduces several security and performance risks.
 
-1. **Risks of running multiple VMs.** A breached VM can bypass the hypervisor
-   (VM escape) to reach the host or neighbouring machines. Shared host hardware
-   opens up side-channel vulnerabilities, where a malicious VM reads memory or
-   cache usage patterns. Compromising the host compromises every hosted VM, and
-   unmonitored internal virtual network traffic lets attacks spread laterally.
+- **VM Escape:** A compromised VM may exploit a vulnerability in the hypervisor to access the host system or neighbouring VMs.
+- **Side-Channel Attacks:** VMs sharing physical hardware may be exposed to attacks that use CPU cache or resource usage patterns to infer sensitive information.
+- **Host Compromise:** If the host system is compromised, all VMs running on it may also be affected.
+- **Lateral Movement:** Poorly monitored virtual network traffic can allow attackers to move between VMs and spread across the internal network.
 
-2. **Overcommitment.** A hypervisor can allocate more vCPU and vRAM than the
-   physical hardware has, assuming VMs will not hit peak usage at the same time.
-   When several VMs demand high resources at once, CPU contention and high
-   latency occur. Extreme memory overcommitment forces the host to swap, which
-   slows everything down or makes the host terminate VM processes.
+### 1. Overcommitment
 
-3. **Virtual switch.** A software device inside the hypervisor that forwards
-   ethernet traffic between virtual network adapters of local VMs without
-   physical cables. It connects to the host's physical NICs through uplink ports
-   to bridge VM traffic with external networks, and it enforces isolation with
-   virtual port groups and VLAN tagging.
+A hypervisor can allocate more virtual CPUs (vCPU) and virtual memory (vRAM) than the physical hardware actually provides. This works because VMs usually do not use all their allocated resources simultaneously.
 
-4. **Nested virtualization.** Running a hypervisor or container platform inside
-   an already virtualized guest. It is used for virtual test labs, for Docker
-   environments that need low-level hardware access, and for sandboxing. In
-   VMware Workstation: power off the VM, open Settings, select Processors and
-   tick "Virtualize Intel VT-x/EPT or AMD-V/RVI".
+However, when several VMs require high resources at the same time, CPU contention and increased latency can occur. Excessive memory overcommitment may force the host to use swap space, significantly reducing performance or causing VM processes to be terminated.
 
-## Virtualization
+### 2. Virtual Switch
 
-### (A) Proxmox VE installation
-I downloaded the Proxmox Virtual Environment ISO and created a new virtual
-machine. Before running Proxmox (which is based on Debian), I configured the
-virtual hardware with two network adapters: one **NAT** and one **Host-only**
-(for internal communication with the host).
+A virtual switch is a software-based networking device inside a hypervisor. It forwards Ethernet traffic between virtual network adapters without requiring physical cables.
 
-![Proxmox installer network configuration](screenshots/proxmox-installer.png)
-![Proxmox web interface](screenshots/proxmox-ui.png)
+It can also connect virtual machines to external networks through the host's physical network adapters. Virtual switches support network isolation through virtual port groups and VLAN tagging.
 
-### (B) Network configuration
-I checked the network connections on the server. `nic1` had to be brought up and
-given an address in the host-only range, which I found by running `ipconfig` in
-cmd on the host.
+### 3. Nested Virtualization
 
-    ip link set nic1 up
-    ip addr add 192.168.229.10/24 dev nic1
+Nested virtualization means running a hypervisor or virtualization platform inside an already virtualized machine.
 
-![ip addr output on Proxmox](screenshots/proxmox-ip-addr.png)
-![/etc/network/interfaces](screenshots/proxmox-interfaces.png)
+It is useful for:
+- Building virtual testing environments.
+- Running nested hypervisors and virtualization platforms.
+- Creating isolated development and testing labs.
+- Running container environments that require hardware virtualization support.
 
-Everything looked fine, but the ping from the VM to the host failed. Windows has
-a strict firewall, so ICMP requests do not go through. I had to enable a
-firewall rule. In an admin PowerShell, the first command shows the rules and the
-second enables them:
+In VMware Workstation, nested virtualization can be enabled by powering off the VM, opening **Settings → Processors**, and selecting **Virtualize Intel VT-x/EPT or AMD-V/RVI**.
 
-    Get-NetFirewallRule -DisplayGroup "File and Printer Sharing"
-    Enable-NetFirewallRule -DisplayGroup "File and Printer Sharing"
+---
 
-![Ping failing before the rule](screenshots/ping-fail.png)
-![Ping working after the rule](screenshots/ping-ok.png)
+# Virtualization
 
-### (C) Debian VM inside Proxmox
-After creating the Debian VM inside Proxmox it has to be configured. In some
-cases VMs do not run because KVM is enabled, so I disabled it in the VM options.
+## (A) Proxmox VE Installation
 
-![KVM hardware virtualization disabled](screenshots/kvm-disabled.png)
+I downloaded the Proxmox Virtual Environment ISO and created a new virtual machine.
 
-I then added a second network adapter (host-only) besides the NAT one.
-Everything was done from the Proxmox GUI:
+Before starting the installation, I configured the virtual hardware with two network adapters:
 
-1. Left menu: **pve → System → Network**.
-2. Create a new bridge `vmbr1` with bridge port `nic1` (host-only on Proxmox).
-3. Click **Apply Configuration** (new interfaces must be applied manually).
-4. Check from the pve shell with `bridge link`.
-5. Select the Debian VM → **Hardware → Add → Network Device**, bridge `vmbr1`.
+- **NAT:** Provides internet connectivity.
+- **Host-only:** Allows internal communication between the virtual machines and the host.
 
-![vmbr1 bridge](screenshots/vmbr1.png)
-![Second network device on the VM](screenshots/vm-network-device.png)
-![bridge link output](screenshots/bridge-link.png)
+The installation was completed using the Proxmox installer.
 
-In my case the second interface in Debian was down and had no address, so I
-brought it up and gave it an address:
+**Screenshots:**
+- [Proxmox installer network configuration](screenshots/proxmox-installer.png)
+- [Proxmox web interface](screenshots/proxmox-ui.png)
 
-    sudo ip link set ens34 up
-    sudo ip addr add 192.168.229.20/24 dev ens34
+## (B) Network Configuration
 
-Then I could check connectivity by pinging the internet, the host and the server.
+After installing Proxmox, I checked the available network interfaces and configured the host-only adapter.
 
-![Debian interface configuration](screenshots/debian-ip.png)
+The host-only network address was identified from the host's network configuration. For documentation purposes, the following commands use example private IP addresses.
 
-### MariaDB
-I installed the database with `sudo apt install mariadb-server` and made sure it
-is only accessible from the second (host-only) network.
+```bash
+ip link set nic1 up
+ip addr add 192.168.10.10/24 dev nic1
+```
 
-![MariaDB installation and status](screenshots/mariadb-install.png)
+Initially, ping requests from Proxmox to the Windows host failed because the Windows firewall was blocking incoming ICMP traffic.
 
-## Docker
+To investigate the issue, I checked the Windows firewall rules using PowerShell and enabled the required connectivity rule.
 
-### (A) Windows VM
-I created another VM outside Proxmox with a Windows ISO, configured it like the
-previous one (second host-only adapter) and enabled "Virtualize Intel VT-x/EPT
-or AMD-V/RVI" in the Processors section.
+```powershell
+Get-NetFirewallRule -DisplayGroup "File and Printer Sharing"
+```
 
-![Windows VM settings](screenshots/windows-vm-settings.png)
+**Screenshots:**
+- [Proxmox IP address configuration](screenshots/proxmox-ip-addr.png)
+- [Network interfaces configuration](screenshots/proxmox-interfaces.png)
+- [Ping failing before firewall configuration](screenshots/ping-fail.png)
+- [Ping working after firewall configuration](screenshots/ping-ok.png)
 
-### (B) Docker Desktop
-I installed Docker Desktop in the Windows VM and configured Linux container
-support (`wsl --install` in PowerShell).
+## (C) Debian VM Inside Proxmox
 
-![Docker Desktop installed](screenshots/docker-desktop.png)
+After creating the Debian virtual machine inside Proxmox, I configured its virtualization and networking settings.
 
-### (C) phpMyAdmin container
-I started a container from the official phpMyAdmin
+In my environment, I had to disable KVM hardware virtualization in the VM options to resolve a compatibility issue.
+
+**Screenshot:**
+- [KVM hardware virtualization settings](screenshots/kvm-disabled.png)
+
+Next, I configured a second network adapter for host-only communication through the Proxmox web interface.
+
+The configuration steps were:
+
+1. Navigate to **pve → System → Network**.
+2. Create a new Linux bridge named `vmbr1`.
+3. Set `nic1` as the bridge port.
+4. Click **Apply Configuration**.
+5. Verify the bridge using `bridge link` in the Proxmox shell.
+6. Select the Debian VM and navigate to **Hardware → Add → Network Device**.
+7. Assign the new network device to `vmbr1`.
+
+**Screenshots:**
+- [vmbr1 bridge configuration](screenshots/vmbr1.png)
+- [Second network adapter on Debian VM](screenshots/vm-network-device.png)
+- [Bridge link command output](screenshots/bridge-link.png)
+
+The second Debian network interface was initially down and had no IP address. I brought it up and assigned an example address from the host-only network.
+
+```bash
+sudo ip link set ens34 up
+sudo ip addr add 192.168.10.20/24 dev ens34
+```
+
+After configuring both network adapters, I tested connectivity between the Debian VM, the Proxmox server, the host system, and the internet.
+
+**Screenshot:**
+- [Debian network interface configuration](screenshots/debian-ip.png)
+
+## MariaDB Installation and Configuration
+
+I installed MariaDB on the Debian virtual machine:
+
+```bash
+sudo apt install mariadb-server
+```
+
+After installation, I configured MariaDB to accept connections only through the designated host-only network interface.
+
+This ensured that database access remained restricted to the intended internal network rather than being exposed to the external network.
+
+**Screenshot:**
+- [MariaDB installation and service status](screenshots/mariadb-install.png)
+
+---
+
+# Docker
+
+## (A) Windows Virtual Machine
+
+I created an additional Windows virtual machine using a Windows ISO.
+
+The VM was configured with a second host-only network adapter to allow communication with the Debian database server.
+
+I also enabled nested virtualization through:
+
+**Settings → Processors → Virtualize Intel VT-x/EPT or AMD-V/RVI**
+
+**Screenshot:**
+- [Windows VM settings](screenshots/windows-vm-settings.png)
+
+## (B) Docker Desktop Installation
+
+I installed Docker Desktop inside the Windows virtual machine and configured Linux container support.
+
+To enable the required Windows Subsystem for Linux (WSL) functionality, I executed the following command in an administrator PowerShell terminal:
+
+```powershell
+wsl --install
+```
+
+After completing the installation, I verified that Docker Desktop was running correctly.
+
+**Screenshot:**
+- [Docker Desktop installation](screenshots/docker-desktop.png)
+
+## (C) phpMyAdmin Container
+
+The next step was to deploy phpMyAdmin using Docker.
+
+The goal was to establish communication between the phpMyAdmin container running inside the Windows VM and the MariaDB server installed on the Debian VM.
+
+This allowed me to access and manage the database through a web-based interface while keeping database communication within the host-only network.
+
