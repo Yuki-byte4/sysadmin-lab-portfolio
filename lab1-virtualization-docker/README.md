@@ -60,7 +60,7 @@ The host-only network address was identified from the host's network configurati
 
 ```bash
 ip link set nic1 up
-ip addr add 192.168.10.10/24 dev nic1
+ip addr add 192.168.x.x/24 dev nic1
 ```
 
 Initially, ping requests from Proxmox to the Windows host failed because the Windows firewall was blocking incoming ICMP traffic.
@@ -107,7 +107,7 @@ The second Debian network interface was initially down and had no IP address. I 
 
 ```bash
 sudo ip link set ens34 up
-sudo ip addr add 192.168.10.20/24 dev ens34
+sudo ip addr add 192.168.x.x/24 dev ens34
 ```
 
 After configuring both network adapters, I tested connectivity between the Debian VM, the Proxmox server, the host system, and the internet.
