@@ -1,1 +1,11 @@
-
+dn: cn=student03,ou=users,dc=ipb,dc=pt
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: student03
+cn: student03
+sn: 03
+uidNumber: 2003
+gidNumber: 2000
+homeDirectory: /home/student03
+loginShell: /bin/bash
