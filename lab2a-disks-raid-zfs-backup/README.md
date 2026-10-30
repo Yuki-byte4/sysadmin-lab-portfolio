@@ -336,3 +336,122 @@ find /mnt/backup -name file3.txt -exec ls -li {} \; 2>/dev/null
 - Identify disks by size and `lsblk`, never by letter alone.
 - Save RAID configuration so the array survives reboots.
 - Hard links explain how snapshot tools and deduplication save space.
+# Back In Time Demonstration
+
+Part of [Lab 2a](README.md). Back In Time is a snapshot backup tool for Linux.
+The VM has no desktop, so I used the command-line version (`backintime-common`,
+version 1.5.5) with an extra disk mounted on `/mnt/backup` as the destination.
+
+## Steps
+
+1. Create a test folder `~/Documents` with a few files (`file1`, `file2`, `file3`).
+2. Take a first snapshot.
+3. Edit `file1`, delete `file2` and take a second snapshot.
+4. Browse the snapshots, compare the versions and restore the deleted file.
+
+## 1. Test files
+
+    mkdir -p ~/Documents
+    echo "version1" > ~/Documents/file1.txt
+    echo "delete"   > ~/Documents/file2.txt
+    echo "keep"     > ~/Documents/file3.txt
+
+I first typed `exho` instead of `echo`, which gave `command not found`, and
+repeated the command correctly.
+
+![Creating the test files](screenshots/bit-test-files.png)
+
+## 2. Configuration
+
+Back In Time reads its settings from `~/.config/backintime/config`. The folder
+did not exist, so I created it first, then wrote a minimal config with the
+destination (`/mnt/backup`) and the folder to back up (`~/Documents`):
+
+    mkdir -p ~/.config/backintime
+    cat > ~/.config/backintime/config << 'EOF'
+    config.version=6
+    profiles.version=1
+    profile1.snapshots.mode=local
+    profile1.snapshots.path=/mnt/backup
+    profile1.snapshots.include.size=1
+    profile1.snapshots.include.1.type=0
+    profile1.snapshots.include.1.value=/home/<USER>/Documents
+    profile1.snapshots.exclude.size=0
+    profile1.snapshots.automatic_backup_mode=0
+    EOF
+
+![Configuration file](screenshots/bit-config.png)
+
+Then I validated it:
+
+    backintime check-config
+
+It prepared the snapshot path, checked the config and installed the crontab,
+and reported that the main profile is fine.
+
+![check-config output](screenshots/bit-check-config.png)
+
+## 3. First snapshot
+
+    backintime backup
+    backintime snapshots-list
+
+The warning "Inhibit Suspend failed" is harmless: there is no desktop session
+on this VM to block sleep.
+
+![First snapshot](screenshots/bit-first-snapshot.png)
+
+## 4. Edit one file, delete another, second snapshot
+
+    echo "version2" > ~/Documents/file1.txt
+    rm ~/Documents/file2.txt
+    backintime backup
+    backintime snapshots-list
+
+I mistyped the command once as `snapshot-list`, and Back In Time listed the
+valid commands (the correct one is `snapshots-list`). Now two snapshot IDs
+appear. If nothing has changed, Back In Time reports "Nothing changed, no new
+snapshot necessary" and creates no snapshot.
+
+![Second snapshot and the list of two snapshots](screenshots/bit-second-snapshot.png)
+
+## 5. Compare the versions
+
+Snapshots are normal folders, so `find` shows where each file is stored:
+
+    find /mnt/backup -name file1.txt 2>/dev/null
+    find /mnt/backup -name file2.txt 2>/dev/null
+
+`file1.txt` appears in **both** snapshots (with different content), while
+`file2.txt` appears **only in the first** one, because I deleted it before the
+second snapshot. The `lost+found: Permission denied` message is normal: that
+folder belongs to root.
+
+![find results](screenshots/bit-find.png)
+
+## 6. Restore the deleted file
+
+    cp /mnt/backup/backintime/<HOST>/<USER>/1/<FIRST_SNAPSHOT_ID>/backup/home/<USER>/Documents/file2.txt ~/Documents/
+    cat ~/Documents/file2.txt
+
+![Restored file](screenshots/bit-restore.png)
+
+## 7. Hard links (link to deduplication)
+
+`file3.txt` did not change between snapshots. Listing it in both snapshots
+shows the **same inode number**, so the data is stored only once:
+
+    find /mnt/backup -name file3.txt -exec ls -li {} \; 2>/dev/null
+
+![Same inode in both snapshots](screenshots/bit-inode.png)
+
+## Problems and fixes
+
+| Problem | Cause | Fix |
+|---|---|---|
+| `echo: command not found` | Typo (`exho`) | Retype the command |
+| `No such file or directory` writing the config | `~/.config/backintime` did not exist | `mkdir -p ~/.config/backintime` |
+| `KeyError: 'local '` | Trailing space pasted into the config | `sed -i 's/[[:space:]]*$//' ~/.config/backintime/config` |
+| "No snapshots in main profile" | No backup had been run yet | Run `backintime backup` first |
+| `invalid choice: 'snapshot-list'` | Wrong command name | Use `snapshots-list` |
+| "Nothing changed, no new snapshot" | Files unchanged, or edited as the wrong user | Run as the same user and change a file in the backed-up folder |
