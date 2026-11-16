@@ -1,0 +1,14 @@
+zone "linux. local" {
+type primary;
+file "/etc/bind/db.linux.local";
+allow-transfer {192.168.124.201;};
+notify yes;
+allow-update {key ddns-key;};
+}
+zone "124.168.192.in-addr.arpa" {
+type primary;
+file "/etc/bind/db.192.168.124";
+allow-transfer {192.168.124.201;};
+notify yes;
+allow-uodate {key ddns-key;};
+}
