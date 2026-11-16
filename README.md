@@ -1,8 +1,8 @@
 # sysadmin-lab-portfolio
+
 # Network and System Management: Lab Portfolio
 
-Hands-on labs for the Network and System Management. Everything was built and tested in virtual machines
-(VMware Workstation, Debian 13, Proxmox VE, Windows 11).
+Hands-on labs for Network and System Management. Everything was built and tested in virtual machines (VMware Workstation, Debian 13, Proxmox VE, Windows 11).
 
 ## Labs
 
@@ -11,6 +11,7 @@ Hands-on labs for the Network and System Management. Everything was built and te
 | [Lab 1: Virtualization and Docker](lab1-virtualization-docker) | Nested virtualization, Proxmox VE, a Debian VM with MariaDB, Docker Desktop, phpMyAdmin | Done |
 | [Lab 2a: Disks, RAID, ZFS and backups](lab2a-disks-raid-zfs-backup) | RAID 6 with hot spares, LVM (linear, mirrored, striped), ZFS, VHDX boot, Back In Time | Done |
 | [Lab 2b: Accounts, LDAP, dual boot, systemd](lab2b-accounts-ldap-boot) | Local account lockout, PAM and NSS, OpenLDAP, Windows and Debian dual boot, systemd service | Done |
+| [Lab 3: DNS and DHCP](lab3-dns-dhcp) | BIND9 primary and secondary DNS, forward and reverse zones, DDNS, ISC DHCP, DHCP failover and troubleshooting | Done |
 
 ## Skills shown
 
@@ -19,20 +20,19 @@ Hands-on labs for the Network and System Management. Everything was built and te
 - **Identity:** OpenLDAP, PAM, NSS, local account management
 - **Boot and services:** GRUB, dual boot, systemd units, recovery from a locked root account
 - **Containers and databases:** Docker, phpMyAdmin, MariaDB
+- **Networking:** DNS, BIND9, DHCP, DDNS, DNS zone transfers, DHCP failover
+- **Troubleshooting:** AppArmor, journalctl, systemd service logs, DNS resolution and DHCP lease verification
 
 ## How each lab is organized
 
-Each lab folder has a README with the goal, the commands used, screenshots as
-evidence, and a **Problems and fixes** table describing what went wrong and how
-I solved it.
+Each lab folder has a README with the goal, the commands used, screenshots as evidence, and a **Problems and fixes** table describing what went wrong and how I solved it.
 
 ## Notes
 
-- The labs were completed as university coursework. Credentials shown are
-  placeholders or values defined by the assignment.
-- IP addresses, usernames and device names are generalized on purpose.
-- Disk device names (`sdb`, `sdc`, ...) change between reboots, so the commands
-  use placeholders and identify disks by size.
+- The labs were completed as university coursework.
+- Credentials and secret keys must be removed or replaced before publishing configuration screenshots.
+- IP addresses, usernames and device names are generalized where appropriate.
+- Disk device names (`sdb`, `sdc`, ...) change between reboots, so the commands use placeholders and identify disks by size.
 
 ## Environment
 
