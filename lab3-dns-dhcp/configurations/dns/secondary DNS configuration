@@ -1,0 +1,10 @@
+zone "linux. local"{
+type secondary;
+file "/etc/bind/db. linux. local";
+primaries { 192.168.124.200; };
+}
+zone "124. 168. 192. in-addr.arpa" {
+type secondary;
+file "/etc/bind/db. 192.168.124";
+primaries { 192.168.124.200; };
+}
